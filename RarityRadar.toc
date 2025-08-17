@@ -1,0 +1,8 @@
+## Interface: 50400
+## Title: RarityRadar
+## Notes: Tired of manually looting everything? RarityRadar automatically grabs valuable items based on rarity, handles crafting materials from disenchanting/professions, and manages group loot rolling. Set your minimum quality threshold and let it work in the background while you focus on playing.
+## Author: Andrew Donelson
+## Version: 1.8
+## SavedVariables: RarityRadarDB
+
+RarityRadar.lua
