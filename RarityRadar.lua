@@ -23,9 +23,237 @@ local defaults = {
     autoGreedEnabled = true,
     autoConfirmSoulbound = true, -- Auto-confirm soulbound item dialogs
     lootCloth = false, -- Auto-loot cloth items regardless of rarity
-    debug = false,
-    verboseDebug = false -- Extra detailed debugging
+    debug = false -- Debug mode with verbose output
 }
+
+-- Settings UI Panel
+local settingsPanel = nil
+
+-- Create Interface Options panel (LeatrixPlus-style main page)
+function RR:CreateSettingsPanel()
+    if settingsPanel then 
+        return settingsPanel 
+    end
+    
+    print("|cFF00FF00[RR Debug]|r Creating LeatrixPlus-style main panel...")
+    
+    -- Create the main panel frame for Interface Options
+    settingsPanel = CreateFrame("Frame")
+    settingsPanel.name = "RarityRadar"
+    
+    -- Main title (large, yellow like LeatrixPlus)
+    local mainTitle = settingsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
+    mainTitle:SetPoint("TOP", 0, -40)
+    mainTitle:SetText("RarityRadar")
+    mainTitle:SetTextColor(1, 1, 0) -- Yellow like LeatrixPlus
+    
+    -- Subtitle
+    local subtitle = settingsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    subtitle:SetPoint("TOP", mainTitle, "BOTTOM", 0, -10)
+    subtitle:SetText("Mists of Pandaria Classic")
+    subtitle:SetTextColor(1, 1, 0) -- Yellow
+    
+    -- Command line (large, yellow, centered like LeatrixPlus)
+    local commandText = settingsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
+    commandText:SetPoint("CENTER", 0, 50)
+    commandText:SetText("/rr")
+    commandText:SetTextColor(1, 1, 0) -- Yellow
+    
+    -- Website/info text (smaller, yellow, centered)
+    local infoText = settingsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    infoText:SetPoint("TOP", commandText, "BOTTOM", 0, -20)
+    infoText:SetText("Auto-loot addon for quality items")
+    infoText:SetTextColor(1, 1, 0) -- Yellow
+    
+    -- Settings section (left side)
+    local yOffset = -50
+    
+    -- Enable/Disable Checkbox
+    local enabledCheck = CreateFrame("CheckButton", "RRSettingsEnabled", settingsPanel, "InterfaceOptionsCheckButtonTemplate")
+    enabledCheck:SetPoint("TOPLEFT", 20, yOffset)
+    _G[enabledCheck:GetName() .. 'Text']:SetText("Enable RarityRadar")
+    enabledCheck:SetScript("OnClick", function(self)
+        RarityRadarDB.enabled = self:GetChecked()
+        RR:Print("Addon " .. (RarityRadarDB.enabled and "enabled" or "disabled"))
+    end)
+    settingsPanel.enabledCheck = enabledCheck
+    
+    yOffset = yOffset - 30
+    
+    -- Minimum Rarity Section
+    local rarityLabel = settingsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    rarityLabel:SetPoint("TOPLEFT", 20, yOffset)
+    rarityLabel:SetText("Minimum Rarity:")
+    
+    yOffset = yOffset - 20
+    
+    -- Create radio buttons for rarity (compact layout)
+    local rarityButtons = {}
+    local rarityOptions = {
+        {text = "Poor (Gray)", value = RARITY.POOR},
+        {text = "Common (White)", value = RARITY.COMMON},
+        {text = "Uncommon (Green)", value = RARITY.UNCOMMON},
+        {text = "Rare (Blue)", value = RARITY.RARE},
+        {text = "Epic (Purple)", value = RARITY.EPIC},
+        {text = "Legendary (Orange)", value = RARITY.LEGENDARY}
+    }
+    
+    for i, option in ipairs(rarityOptions) do
+        local button = CreateFrame("CheckButton", "RRRarityOption" .. i, settingsPanel, "InterfaceOptionsCheckButtonTemplate")
+        button:SetPoint("TOPLEFT", 40, yOffset)
+        _G[button:GetName() .. 'Text']:SetText(option.text)
+        button.value = option.value
+        button:SetScript("OnClick", function(self)
+            -- Uncheck all other buttons
+            for _, btn in ipairs(rarityButtons) do
+                btn:SetChecked(false)
+            end
+            -- Check this button
+            self:SetChecked(true)
+            RarityRadarDB.minRarity = self.value
+            RR:Print("Minimum rarity set to: " .. option.text)
+        end)
+        table.insert(rarityButtons, button)
+        yOffset = yOffset - 20
+    end
+    settingsPanel.rarityButtons = rarityButtons
+    
+    yOffset = yOffset - 10
+    
+    -- Other options (right side)
+    local rightOffset = -50
+    
+    -- Auto-Greed Checkbox
+    local greedCheck = CreateFrame("CheckButton", "RRSettingsGreed", settingsPanel, "InterfaceOptionsCheckButtonTemplate")
+    greedCheck:SetPoint("TOPRIGHT", -20, rightOffset)
+    _G[greedCheck:GetName() .. 'Text']:SetText("Auto-Greed in Groups")
+    greedCheck:SetScript("OnClick", function(self)
+        RarityRadarDB.autoGreedEnabled = self:GetChecked()
+        RR:Print("Auto-greed " .. (RarityRadarDB.autoGreedEnabled and "enabled" or "disabled"))
+    end)
+    settingsPanel.greedCheck = greedCheck
+    
+    rightOffset = rightOffset - 30
+    
+    -- Auto-Confirm Soulbound Checkbox
+    local confirmCheck = CreateFrame("CheckButton", "RRSettingsConfirm", settingsPanel, "InterfaceOptionsCheckButtonTemplate")
+    confirmCheck:SetPoint("TOPRIGHT", -20, rightOffset)
+    _G[confirmCheck:GetName() .. 'Text']:SetText("Auto-Confirm Soulbound Items")
+    confirmCheck:SetScript("OnClick", function(self)
+        RarityRadarDB.autoConfirmSoulbound = self:GetChecked()
+        RR:Print("Auto-confirm soulbound " .. (RarityRadarDB.autoConfirmSoulbound and "enabled" or "disabled"))
+    end)
+    settingsPanel.confirmCheck = confirmCheck
+    
+    rightOffset = rightOffset - 30
+    
+    -- Loot Cloth Checkbox
+    local clothCheck = CreateFrame("CheckButton", "RRSettingsCloth", settingsPanel, "InterfaceOptionsCheckButtonTemplate")
+    clothCheck:SetPoint("TOPRIGHT", -20, rightOffset)
+    _G[clothCheck:GetName() .. 'Text']:SetText("Auto-Loot Cloth Items")
+    clothCheck:SetScript("OnClick", function(self)
+        RarityRadarDB.lootCloth = self:GetChecked()
+        RR:Print("Auto-loot cloth " .. (RarityRadarDB.lootCloth and "enabled" or "disabled"))
+    end)
+    settingsPanel.clothCheck = clothCheck
+    
+    rightOffset = rightOffset - 30
+    
+    -- Debug Mode Checkbox
+    local debugCheck = CreateFrame("CheckButton", "RRSettingsDebug", settingsPanel, "InterfaceOptionsCheckButtonTemplate")
+    debugCheck:SetPoint("TOPRIGHT", -20, rightOffset)
+    _G[debugCheck:GetName() .. 'Text']:SetText("Debug Mode")
+    debugCheck:SetScript("OnClick", function(self)
+        RarityRadarDB.debug = self:GetChecked()
+        RR:Print("Debug mode " .. (RarityRadarDB.debug and "enabled" or "disabled"))
+    end)
+    settingsPanel.debugCheck = debugCheck
+    
+    -- Function to refresh UI with current settings
+    settingsPanel.refresh = function()
+        settingsPanel.enabledCheck:SetChecked(RarityRadarDB.enabled)
+        
+        -- Set rarity radio buttons
+        for _, btn in ipairs(settingsPanel.rarityButtons) do
+            btn:SetChecked(btn.value == RarityRadarDB.minRarity)
+        end
+        
+        settingsPanel.greedCheck:SetChecked(RarityRadarDB.autoGreedEnabled)
+        settingsPanel.confirmCheck:SetChecked(RarityRadarDB.autoConfirmSoulbound)
+        settingsPanel.clothCheck:SetChecked(RarityRadarDB.lootCloth)
+        settingsPanel.debugCheck:SetChecked(RarityRadarDB.debug)
+    end
+    
+    -- Set up the refresh event
+    settingsPanel:SetScript("OnShow", settingsPanel.refresh)
+    
+    print("|cFF00FF00[RR Debug]|r Creating LeatrixPlus-style panel, adding to Interface Options...")
+    
+    -- Add to Interface Options manually (MoP Classic method)
+    settingsPanel.parent = "AddOns"
+    
+    -- Try to add to INTERFACEOPTIONS_ADDONCATEGORIES table if it exists
+    if INTERFACEOPTIONS_ADDONCATEGORIES then
+        table.insert(INTERFACEOPTIONS_ADDONCATEGORIES, settingsPanel)
+        print("|cFF00FF00[RR Debug]|r Added to INTERFACEOPTIONS_ADDONCATEGORIES table")
+    else
+        print("|cFFFF6600[RR Debug]|r INTERFACEOPTIONS_ADDONCATEGORIES not found, trying alternative method")
+    end
+    
+    print("|cFF00FF00[RR Debug]|r LeatrixPlus-style panel created successfully!")
+    
+    return settingsPanel
+end
+
+-- Open the settings panel
+function RR:OpenSettingsPanel()
+    print("|cFF00FF00[RR Debug]|r OpenSettingsPanel called")
+    
+    -- Make sure panel exists
+    if not settingsPanel then
+        self:CreateSettingsPanel()
+    end
+    
+    if not settingsPanel then
+        print("|cFFFF0000[RR Error]|r Settings panel creation failed!")
+        return
+    end
+    
+    -- Try to open Interface Options to our addon
+    print("|cFF00FF00[RR Debug]|r Attempting to open Interface Options...")
+    
+    -- First try opening Interface Options frame
+    local success, err = pcall(function()
+        if InterfaceOptionsFrame_Show then
+            InterfaceOptionsFrame_Show()
+        elseif InterfaceOptionsFrame then
+            InterfaceOptionsFrame:Show()
+        end
+    end)
+    
+    if success then
+        print("|cFF00FF00[RR Debug]|r Interface Options opened")
+        
+        -- Try to navigate to our category
+        local success2, err2 = pcall(function()
+            if InterfaceOptionsFrame_OpenToCategory then
+                InterfaceOptionsFrame_OpenToCategory(settingsPanel)
+            elseif InterfaceOptionsFrameAddOns and InterfaceOptionsFrameAddOns.DisplayPanel then
+                InterfaceOptionsFrameAddOns.DisplayPanel(settingsPanel)
+            end
+        end)
+        
+        if success2 then
+            print("|cFF00FF00[RR Debug]|r Successfully navigated to RarityRadar panel")
+        else
+            print("|cFFFF6600[RR Debug]|r Could not navigate to RarityRadar panel: " .. tostring(err2))
+            print("|cFFFF6600[RarityRadar]|r Interface Options opened. Look for RarityRadar under AddOns")
+        end
+    else
+        print("|cFFFF0000[RR Error]|r Failed to open Interface Options: " .. tostring(err))
+        print("|cFFFF6600[RarityRadar]|r Manual access: ESC -> Interface -> AddOns -> Look for RarityRadar")
+    end
+end
 
 -- Initialize saved variables
 function RR:InitializeDB()
@@ -41,17 +269,10 @@ function RR:InitializeDB()
     end
 end
 
--- Debug print function
+-- Debug print function (verbose output)
 function RR:DebugPrint(msg)
     if RarityRadarDB.debug then
-        print("|cFF00FF00[RR Debug]|r " .. msg)
-    end
-end
-
--- Verbose debug print function
-function RR:VerboseDebugPrint(msg)
-    if RarityRadarDB.verboseDebug then
-        print("|cFF00FFFF[RR Verbose]|r " .. msg)
+        print("|cFF00FFFF[RR Debug]|r " .. msg)
     end
 end
 
@@ -103,19 +324,19 @@ end
 -- Check if item meets rarity requirement and is not soulbound
 function RR:ShouldLootItem(itemLink)
     if not itemLink then 
-        self:VerboseDebugPrint("No item link provided")
+        self:DebugPrint("No item link provided")
         return false 
     end
     
     local _, _, quality = GetItemInfo(itemLink)
     if not quality then 
-        self:VerboseDebugPrint("Quality not available for item: " .. tostring(itemLink))
+        self:DebugPrint("Quality not available for item: " .. tostring(itemLink))
         return false 
     end
     
     -- Check rarity requirement
     local meetsRarity = quality >= RarityRadarDB.minRarity
-    self:VerboseDebugPrint("Item quality: " .. quality .. ", required: " .. RarityRadarDB.minRarity .. ", meets requirement: " .. tostring(meetsRarity))
+    self:DebugPrint("Item quality: " .. quality .. ", required: " .. RarityRadarDB.minRarity .. ", meets requirement: " .. tostring(meetsRarity))
     
     if not meetsRarity then
         return false
@@ -156,7 +377,7 @@ function RR:IsItemCloth(itemLink)
     local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType = GetItemInfo(itemLink)
     
     if not itemType then 
-        self:VerboseDebugPrint("Item type not available for: " .. tostring(itemLink))
+        self:DebugPrint("Item type not available for: " .. tostring(itemLink))
         return false 
     end
     
@@ -188,24 +409,24 @@ end
 function RR:IsCraftingScenario()
     -- Check if trade skill window is open
     if TradeSkillFrame and TradeSkillFrame:IsVisible() then
-        self:VerboseDebugPrint("Trade skill window is open - crafting scenario detected")
+        self:DebugPrint("Trade skill window is open - crafting scenario detected")
         return true
     end
     
     -- Check if enchanting window is open
     if EnchantingFrame and EnchantingFrame:IsVisible() then
-        self:VerboseDebugPrint("Enchanting window is open - disenchanting scenario detected")
+        self:DebugPrint("Enchanting window is open - disenchanting scenario detected")
         return true
     end
     
     -- Check if we recently cast a crafting spell
     local currentTime = GetTime()
     if RR.lastCraftTime and (currentTime - RR.lastCraftTime) < 5 then
-        self:VerboseDebugPrint("Recent crafting activity detected - crafting scenario (time since cast: " .. string.format("%.1f", currentTime - RR.lastCraftTime) .. "s)")
+        self:DebugPrint("Recent crafting activity detected - crafting scenario (time since cast: " .. string.format("%.1f", currentTime - RR.lastCraftTime) .. "s)")
         return true
     end
     
-    self:VerboseDebugPrint("No crafting scenario detected - normal loot mode")
+    self:DebugPrint("No crafting scenario detected - normal loot mode")
     return false
 end
 
@@ -231,7 +452,7 @@ function RR:IsDisenchantingResult(itemName)
     
     for _, material in ipairs(disenchantResults) do
         if string.find(itemNameLower, material) then
-            self:VerboseDebugPrint("Disenchanting/crafting material detected: " .. itemName)
+            self:DebugPrint("Disenchanting/crafting material detected: " .. itemName)
             return true
         end
     end
@@ -253,7 +474,7 @@ function RR:OnSpellCast(spellName)
     for _, craft in ipairs(craftingSpells) do
         if string.find(spellLower, craft) then
             RR.lastCraftTime = GetTime()
-            self:VerboseDebugPrint("Crafting spell detected: " .. spellName)
+            self:DebugPrint("Crafting spell detected: " .. spellName)
             return
         end
     end
@@ -262,13 +483,13 @@ end
 -- Handle auto-looting
 function RR:HandleAutoLoot()
     if not RarityRadarDB.enabled then 
-        self:VerboseDebugPrint("Addon disabled, skipping auto-loot")
+        self:DebugPrint("Addon disabled, skipping auto-loot")
         return 
     end
     
     local numLootItems = GetNumLootItems()
     if numLootItems == 0 then 
-        self:VerboseDebugPrint("No loot items found")
+        self:DebugPrint("No loot items found")
         return 
     end
     
@@ -297,14 +518,14 @@ function RR:HandleAutoLoot()
         local lootIcon, lootName, lootQuantity, lootSlotType, quality, locked = GetLootSlotInfo(i)
         local itemLink = GetLootSlotLink(i)
         
-        self:VerboseDebugPrint("Slot " .. i .. ": " .. (lootName or "Unknown") .. 
+        self:DebugPrint("Slot " .. i .. ": " .. (lootName or "Unknown") .. 
                               " (Type: " .. tostring(lootSlotType) .. 
                               ", Quality: " .. tostring(quality) .. 
                               ", Locked: " .. tostring(locked) .. 
                               ", HasLink: " .. tostring(itemLink ~= nil) .. ")")
         
         if locked then
-            self:VerboseDebugPrint("Slot " .. i .. " is locked, skipping")
+            self:DebugPrint("Slot " .. i .. " is locked, skipping")
             
         -- Check if it's currency (money)
         elseif self:IsLootSlotCurrency(i) then
@@ -322,7 +543,7 @@ function RR:HandleAutoLoot()
             if isCraftingScenario or hasDisenchantResults then
                 shouldLoot = true
                 lootReason = "crafting/disenchanting result"
-                self:VerboseDebugPrint("Crafting/disenchanting scenario - overriding rarity check for: " .. (lootName or "Unknown") .. " (Quality: " .. (quality or 0) .. ")")
+                self:DebugPrint("Crafting/disenchanting scenario - overriding rarity check for: " .. (lootName or "Unknown") .. " (Quality: " .. (quality or 0) .. ")")
             -- Check if it's cloth and cloth looting is enabled (do this BEFORE disenchanting check)
             elseif RarityRadarDB.lootCloth and self:IsItemCloth(itemLink) then
                 shouldLoot = true
@@ -331,7 +552,7 @@ function RR:HandleAutoLoot()
             elseif self:IsDisenchantingResult(lootName or "") then
                 shouldLoot = true
                 lootReason = "disenchanting material"
-                self:VerboseDebugPrint("Disenchanting material detected: " .. (lootName or "Unknown"))
+                self:DebugPrint("Disenchanting material detected: " .. (lootName or "Unknown"))
             -- Check if it meets rarity requirements (only for non-crafting scenarios)
             elseif self:ShouldLootItem(itemLink) then
                 shouldLoot = true
@@ -350,7 +571,7 @@ function RR:HandleAutoLoot()
                 if self:IsItemSoulbound(itemLink) then
                     reason = "soulbound"
                 end
-                self:VerboseDebugPrint("Skipping item: " .. (lootName or "Unknown") .. 
+                self:DebugPrint("Skipping item: " .. (lootName or "Unknown") .. 
                                      " (Reason: " .. reason .. ", Quality: " .. (quality or 0) .. ")")
             end
         else
@@ -361,7 +582,7 @@ function RR:HandleAutoLoot()
                 LootSlot(i)
                 itemsLooted = itemsLooted + 1
             else
-                self:VerboseDebugPrint("No itemLink for: " .. (lootName or "Unknown") .. " - skipping to be safe")
+                self:DebugPrint("No itemLink for: " .. (lootName or "Unknown") .. " - skipping to be safe")
             end
         end
     end
@@ -372,11 +593,11 @@ function RR:HandleAutoLoot()
         C_Timer.After(0.3, function()
             if LootFrame and LootFrame:IsVisible() then
                 CloseLoot()
-                self:VerboseDebugPrint("Loot window closed")
+                self:DebugPrint("Loot window closed")
             end
         end)
     else
-        self:VerboseDebugPrint("No items looted, leaving loot window open")
+        self:DebugPrint("No items looted, leaving loot window open")
     end
 end
 
@@ -435,15 +656,26 @@ end
 
 -- Slash command handlers
 function RR:HandleSlashCommand(input)
+    print("|cFF00FF00[RR Debug]|r Slash command called with input: '" .. tostring(input) .. "'")
+    
     local args = {}
     for arg in string.gmatch(input, "%S+") do
         table.insert(args, string.lower(arg))
     end
     
     local command = args[1]
+    print("|cFF00FF00[RR Debug]|r Parsed command: '" .. tostring(command) .. "'")
     
-    if not command or command == "help" then
+    -- If no command provided, open settings UI
+    if not command or command == "" then
+        print("|cFF00FF00[RR Debug]|r No command, opening settings panel...")
+        self:OpenSettingsPanel()
+        return
+    end
+    
+    if command == "help" then
         self:Print("Commands:")
+        print("  /rr - Open Interface Options to RarityRadar settings")
         print("  /rr enable/disable - Toggle addon on/off")
         print("  /rr rarity <level> - Set minimum rarity (0-5: poor, common, uncommon, rare, epic, legendary)")
         print("  /rr greed enable/disable - Toggle auto-greed in groups")
@@ -455,6 +687,10 @@ function RR:HandleSlashCommand(input)
         print("  /rr test - Test loot detection on current target")
         print("  /rr testloot - Analyze current loot window (open loot window first)")
         print("Note: Crafting/disenchanting results are always auto-looted regardless of rarity")
+        print("Note: For GUI settings, go to Interface Options -> AddOns -> RarityRadar")
+        
+    elseif command == "config" or command == "settings" or command == "ui" then
+        self:OpenSettingsPanel()
         
     elseif command == "enable" then
         RarityRadarDB.enabled = true
@@ -562,21 +798,67 @@ local frame = CreateFrame("Frame", "RarityRadarFrame")
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         local loadedAddon = ...
+        print("|cFF00FF00[RR Debug]|r ADDON_LOADED event fired for: " .. tostring(loadedAddon))
         if loadedAddon == addonName then
-            RR:InitializeDB()
-            RR:Print("Loaded! Auto-loots currency + items " .. RR:GetRarityName(RarityRadarDB.minRarity) .. "+ (non-soulbound). Type /rr help for commands.")
-            RR:DebugPrint("Debug mode active")
-            RR:VerboseDebugPrint("Verbose debug mode active")
+            print("|cFF00FF00[RR Debug]|r This is our addon, initializing...")
+            
+            -- Initialize database first
+            local success, err = pcall(function()
+                RR:InitializeDB()
+                print("|cFF00FF00[RR Debug]|r Database initialized successfully")
+            end)
+            
+            if not success then
+                print("|cFFFF0000[RR Error]|r Failed to initialize database: " .. tostring(err))
+                return
+            end
+            
+            -- Create settings panel
+            success, err = pcall(function()
+                RR:CreateSettingsPanel()
+                print("|cFF00FF00[RR Debug]|r Settings panel created successfully")
+            end)
+            
+            if not success then
+                print("|cFFFF0000[RR Error]|r Failed to create settings panel: " .. tostring(err))
+                return
+            end
+            
+            -- Print startup message
+            print("|cFFFF6600[RarityRadar]|r 1.8 loaded. For options use /rr or go to Interface Options -> AddOns -> RarityRadar")
+            
+            if RarityRadarDB.debug then
+                print("|cFF00FF00[RR Debug]|r Debug mode active")
+            end
+            if RarityRadarDB.verboseDebug then
+                print("|cFF00FFFF[RR Verbose]|r Verbose debug mode active")
+            end
         end
         
     elseif event == "LOOT_OPENED" then
         -- Small delay to ensure loot info is available
-        C_Timer.After(0.2, function() RR:HandleAutoLoot() end)
+        local timer = CreateFrame("Frame")
+        timer.elapsed = 0
+        timer:SetScript("OnUpdate", function(self, elapsed)
+            self.elapsed = self.elapsed + elapsed
+            if self.elapsed >= 0.2 then
+                self:SetScript("OnUpdate", nil)
+                RR:HandleAutoLoot()
+            end
+        end)
         
     elseif event == "START_LOOT_ROLL" then
         local rollID = ...
         -- Small delay to ensure roll info is available  
-        C_Timer.After(0.2, function() RR:HandleGroupLoot(rollID) end)
+        local timer = CreateFrame("Frame")
+        timer.elapsed = 0
+        timer:SetScript("OnUpdate", function(self, elapsed)
+            self.elapsed = self.elapsed + elapsed
+            if self.elapsed >= 0.2 then
+                self:SetScript("OnUpdate", nil)
+                RR:HandleGroupLoot(rollID)
+            end
+        end)
         
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         local unitID, spellName = ...
@@ -587,7 +869,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
 end)
 
 -- Register events
-frame:RegisterEvent("ADDON_LOADED")
+-- frame:RegisterEvent("ADDON_LOADED") -- Disabled for testing
 frame:RegisterEvent("LOOT_OPENED")
 frame:RegisterEvent("START_LOOT_ROLL")
 frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
@@ -598,3 +880,8 @@ frame:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 SLASH_RARITYRADAR1 = "/rr"
 SLASH_RARITYRADAR2 = "/rarityradar"
 SlashCmdList["RARITYRADAR"] = function(input) RR:HandleSlashCommand(input) end
+
+-- Manual initialization since ADDON_LOADED is disabled
+RR:InitializeDB()
+RR:CreateSettingsPanel()
+print("|cFFFF6600[RarityRadar]|r 1.8 loaded. For options use /rr or go to Interface Options -> AddOns -> RarityRadar")
